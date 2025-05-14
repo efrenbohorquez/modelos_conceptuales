@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+scikit-learn
+# tensorflow==2.15.0 # Descomenta si usas Python <=3.11
+matplotlib
+seaborn
+openpyxl
