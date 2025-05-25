@@ -1,12 +1,34 @@
-# Este módulo está alineado y documentado según la arquitectura conceptual ubicada en:
-# C:\Users\efren\Downloads\supermarket_nn_models_entrega\home\ubuntu\supermarket_nn_models\docs\modelos_conceptuales.md
+"""Módulo de Análisis Exploratorio de Datos (EDA).
+
+Este módulo proporciona funciones para realizar un análisis descriptivo básico
+de un DataFrame, generando visualizaciones y resúmenes estadísticos
+directamente en una aplicación Streamlit.
+"""
+# Este módulo está alineado y documentado según la arquitectura conceptual.
 
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def analisis_descriptivo(df: pd.DataFrame):
+def analisis_descriptivo(df: pd.DataFrame) -> None:
+    """Realiza y muestra un análisis descriptivo de un DataFrame en Streamlit.
+
+    Este análisis incluye:
+    - Vista previa de los datos (primeras filas).
+    - Descripción estadística general.
+    - Histogramas para variables numéricas.
+    - Gráficos de barras para variables categóricas.
+    - Matriz de correlación para variables numéricas.
+    - Conteo de valores nulos por columna.
+
+    Args:
+        df (pd.DataFrame): El DataFrame de Pandas que se va a analizar.
+    
+    Returns:
+        None: Esta función no devuelve valores, pero genera salidas
+              directamente en la interfaz de Streamlit.
+    """
     st.write('Vista previa de los datos:')
     st.dataframe(df.head())
     st.write('Descripción estadística:')
