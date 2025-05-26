@@ -5,6 +5,7 @@ scikit-learn
 # tensorflow==2.15.0 # Descomenta si usas Python <=3.11
 matplotlib
 seaborn
+plotly
 openpyxl
 # Este archivo de requerimientos está alineado con la arquitectura conceptual ubicada en:
 # C:\Users\efren\Downloads\supermarket_nn_models_entrega\home\ubuntu\supermarket_nn_models\docs\modelos_conceptuales.md

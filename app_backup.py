@@ -3,13 +3,9 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from src import data_loader, eda, modelo_1_regresion, modelo_2_segmentacion, modelo_3_clasificacion, modelo_4_anomalias
 
 st.set_page_config(page_title="Modelos Conceptuales Supermercado", layout="wide", initial_sidebar_state="expanded")
-
 st.markdown("""
 <style>
     body, .main, .stApp {
@@ -46,16 +42,13 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 st.markdown('<div class="main-title">Modelos Conceptuales de Redes Neuronales para Supermercados</div>', unsafe_allow_html=True)
 
-# Sidebar
 st.sidebar.header("Carga de datos")
 try:
     st.sidebar.image("data/logo_uc.png", width=120)
 except Exception:
     st.sidebar.warning("No se pudo cargar el logo institucional. Verifica que 'data/logo_uc.png' exista.")
-
 st.sidebar.markdown('<div class="subtitle">Maestría en Analítica de Datos<br>Universidad Central</div>', unsafe_allow_html=True)
 st.sidebar.markdown('<div class="subtitle">Carga de datos</div>', unsafe_allow_html=True)
 archivo = st.sidebar.file_uploader("Sube tu archivo de datos (xlsx)", type=["xlsx"])
@@ -71,10 +64,8 @@ if df is not None:
     st.header("Análisis Descriptivo")
     st.markdown('<div class="subtitle">Explora los datos antes de aplicar los modelos</div>', unsafe_allow_html=True)
     eda.analisis_descriptivo(df)
-    
     st.header("Modelos Propuestos")
     st.markdown('<div class="subtitle">Selecciona y ejecuta el modelo de tu interés</div>', unsafe_allow_html=True)
-    
     st.markdown("""
     <div style='background:#eaf2fb; border-radius:8px; padding:1em; margin-bottom:1em;'>
     <b>Explicación de los modelos y conceptos de redes neuronales aplicados:</b><br><br>
@@ -84,11 +75,10 @@ if df is not None:
     <li><b>Clasificación (MLPClassifier):</b> Implementa una red neuronal multicapa para predecir la próxima línea de producto. Utiliza softmax en la salida para clasificación multiclase y aprende límites de decisión complejos mediante retropropagación.</li>
     </ul>
     </div>
-    """, unsafe_allow_html=True)
-    
-    # Guías de selección de variables
+    """, unsafe_allow_html=True)    # Permitir selección de variables con guías específicas
     st.markdown('<div class="subtitle">Selecciona las variables de entrada para los modelos</div>', unsafe_allow_html=True)
     
+    # Guías específicas para cada modelo
     with st.expander("📋 Guías de Selección de Variables por Modelo", expanded=False):
         st.markdown("""
         ### 🎯 **Regresión - Predicción de Calificación (Rating)**
@@ -121,7 +111,7 @@ if df is not None:
         - ⚠️ **Mínimo 1 variable** requerida
         """)
     
-    # Selector de variables
+    # Selector inteligente de variables
     col1, col2 = st.columns([2, 1])
     
     with col1:
@@ -136,6 +126,7 @@ if df is not None:
     with col2:
         st.markdown("**🔧 Acciones Rápidas:**")
         
+        # Botones para selección automática
         if st.button("🎯 Config. Regresión", help="Seleccionar variables óptimas para regresión"):
             regression_vars = [col for col in df.columns if col not in ['Rating']]
             st.session_state.var_select = regression_vars
@@ -143,7 +134,7 @@ if df is not None:
         
         if st.button("👥 Config. Segmentación", help="Seleccionar variables óptimas para segmentación"):
             seg_vars = [col for col in df.columns if col in ['Total', 'Quantity', 'Unit price', 'gross income', 'Gender', 'Customer type', 'Branch', 'City']]
-            if not seg_vars:
+            if not seg_vars:  # Si no hay variables específicas, usar variables numéricas
                 seg_vars = df.select_dtypes(include=['number']).columns.tolist()
             st.session_state.var_select = seg_vars
             st.rerun()
@@ -166,8 +157,7 @@ if df is not None:
     if variables:
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Variables Seleccionadas", len(variables))
-        with col2:
+            st.metric("Variables Seleccionadas", len(variables))        with col2:
             numeric_vars = len([v for v in variables if pd.api.types.is_numeric_dtype(df[v])])
             st.metric("Variables Numéricas", numeric_vars)
         with col3:
@@ -220,7 +210,6 @@ if df is not None:
         
         return warnings, recommendations
     
-    # Selector de modelo
     opcion = st.selectbox("Selecciona un modelo:", [
         "Regresión: Predicción de Calificación",
         "Segmentación de Clientes", 
@@ -239,8 +228,7 @@ if df is not None:
         warnings, recommendations = validar_variables_modelo("anomalias", variables, df)
     else:
         warnings, recommendations = [], []
-    
-    # Mostrar validaciones
+      # Mostrar validaciones
     if warnings:
         for warning in warnings:
             st.warning(warning)
@@ -250,8 +238,6 @@ if df is not None:
             for rec in recommendations:
                 st.info(rec)
     
-    # === SECCIÓN DE MODELOS ===
-    
     if opcion == "Regresión: Predicción de Calificación":
         st.subheader("🎯 Modelo de Regresión (MLPRegressor)")
         st.markdown("""
@@ -260,16 +246,16 @@ if df is not None:
         **Algoritmo:** Red neuronal multicapa que aprende relaciones no lineales complejas entre las variables de entrada y la calificación del cliente.
         """)
         
+        # Solo permitir entrenamiento si no hay errores críticos
         can_train = 'Rating' in df.columns and len([v for v in variables if pd.api.types.is_numeric_dtype(df[v])]) >= 1
         
         if can_train:
             if st.button("🚀 Entrenar modelo de regresión", type="primary"):
                 with st.spinner("Entrenando modelo..."):
                     try:
+                        # Filtrar variables para excluir Rating si está en la selección
                         input_vars = [v for v in variables if v != 'Rating']
-                        modelo, preproc, resultados = modelo_1_regresion.entrenar_regresion(df[input_vars + ['Rating']].dropna())
-                        
-                        st.success("✅ Entrenamiento finalizado exitosamente.")
+                        modelo, preproc, resultados = modelo_1_regresion.entrenar_regresion(df[input_vars + ['Rating']].dropna())                        st.success("✅ Entrenamiento finalizado exitosamente.")
                         
                         # Métricas en columnas
                         col1, col2, col3 = st.columns(3)
@@ -280,11 +266,12 @@ if df is not None:
                         with col3:
                             st.metric("R² (Coeficiente de Determinación)", f"{resultados['R2']:.3f}")
                         
-                        # Gráfico de predicciones vs valores reales
+                        # Gráfico de predicciones vs valores reales mejorado
                         st.subheader("📊 Predicciones vs Valores Reales")
                         col1, col2 = st.columns(2)
                         
                         with col1:
+                            # Gráfico de línea tradicional
                             chart_data = pd.DataFrame({
                                 "Real": resultados['y_test'].values,
                                 "Predicción": resultados['y_pred']
@@ -292,11 +279,15 @@ if df is not None:
                             st.line_chart(chart_data, height=400)
                         
                         with col2:
+                            # Scatter plot de predicciones vs reales
+                            import matplotlib.pyplot as plt
+                            import seaborn as sns
                             fig_scatter, ax_scatter = plt.subplots(figsize=(8, 6))
                             plt.style.use('seaborn-v0_8-whitegrid')
                             
                             sns.scatterplot(x=resultados['y_test'], y=resultados['y_pred'], ax=ax_scatter, alpha=0.7, color='#3498db')
                             
+                            # Línea perfecta de predicción
                             min_val = min(min(resultados['y_test']), min(resultados['y_pred']))
                             max_val = max(max(resultados['y_test']), max(resultados['y_pred']))
                             ax_scatter.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Predicción Perfecta')
@@ -307,7 +298,7 @@ if df is not None:
                             ax_scatter.legend()
                             st.pyplot(fig_scatter)
 
-                        # Análisis de Residuos
+                        # Análisis de Residuos mejorado
                         st.subheader("🔍 Análisis de Residuos")
                         try:
                             residuos = resultados['y_test'].values - resultados['y_pred']
@@ -315,6 +306,7 @@ if df is not None:
                             col1, col2 = st.columns(2)
                             
                             with col1:
+                                # Gráfico de residuos vs predicciones
                                 fig_res, ax_res = plt.subplots(figsize=(8, 6))
                                 sns.scatterplot(x=resultados['y_pred'], y=residuos, ax=ax_res, alpha=0.7, color='#e74c3c')
                                 ax_res.hlines(y=0, xmin=min(resultados['y_pred']), xmax=max(resultados['y_pred']), 
@@ -322,9 +314,11 @@ if df is not None:
                                 ax_res.set_xlabel("Valores Predichos", fontsize=12)
                                 ax_res.set_ylabel("Residuos", fontsize=12)
                                 ax_res.set_title("Residuos vs Predicciones", fontsize=14, fontweight='bold')
+                                plt.style.use('seaborn-v0_8-whitegrid')
                                 st.pyplot(fig_res)
                             
                             with col2:
+                                # Histograma de residuos
                                 fig_hist, ax_hist = plt.subplots(figsize=(8, 6))
                                 sns.histplot(residuos, kde=True, ax=ax_hist, color='#9b59b6', alpha=0.7)
                                 ax_hist.axvline(x=0, color='black', linestyle='--', linewidth=2)
@@ -336,11 +330,11 @@ if df is not None:
                         except Exception as e_res:
                             st.warning(f"No se pudo generar el análisis de residuos: {e_res}")
 
-                        # Importancia de variables
-                        st.subheader("📈 Importancia de Variables")
-                        if hasattr(modelo, 'feature_importances_'):
+                        # Importancia de variables mejorada
+                        st.subheader("📈 Importancia de Variables")                        if hasattr(modelo, 'feature_importances_'):
                             importancias = modelo.feature_importances_
                         elif hasattr(modelo, 'coefs_'):
+                            import numpy as np
                             importancias = np.abs(modelo.coefs_[0]).sum(axis=1)
                         else:
                             importancias = None
@@ -352,8 +346,9 @@ if df is not None:
                                 feature_names = [f"var_{i}" for i in range(len(importancias))]
                             
                             imp_df = pd.DataFrame({"Variable": feature_names, "Importancia": importancias})
-                            imp_df = imp_df.sort_values("Importancia", ascending=False).head(15)
+                            imp_df = imp_df.sort_values("Importancia", ascending=False).head(15)  # Top 15
                             
+                            # Gráfico de barras horizontal mejorado
                             fig_imp, ax_imp = plt.subplots(figsize=(10, 8))
                             sns.barplot(data=imp_df, x="Importancia", y="Variable", ax=ax_imp, palette="viridis")
                             ax_imp.set_title("Top 15 Variables Más Importantes", fontsize=14, fontweight='bold')
@@ -361,11 +356,11 @@ if df is not None:
                             plt.tight_layout()
                             st.pyplot(fig_imp)
                             
+                            # Tabla de importancias
                             with st.expander("📋 Ver tabla completa de importancias", expanded=False):
                                 st.dataframe(imp_df, use_container_width=True)
                         else:
                             st.info("💡 El modelo MLPRegressor no permite calcular importancia de variables directamente.")
-                            
                     except Exception as e:
                         st.error(f"❌ Error durante el entrenamiento del modelo: {e}")
         else:
@@ -379,6 +374,7 @@ if df is not None:
         **Algoritmo:** Reducción de dimensionalidad con PCA seguida de clustering con KMeans para identificar grupos naturales en los datos.
         """)
         
+        # Validar variables numéricas
         numeric_vars = [v for v in variables if pd.api.types.is_numeric_dtype(df[v])]
         can_segment = len(numeric_vars) >= 2
         
@@ -404,21 +400,25 @@ if df is not None:
                         with col2:
                             st.metric("Clientes Segmentados", len(df_seg))
                         with col3:
+                            # Calcular silhouette score si es posible
                             try:
                                 from sklearn.metrics import silhouette_score
                                 sil_score = silhouette_score(pca.transform(preproc.transform(df[variables].dropna())), df_seg['Segmento'])
                                 st.metric("Silhouette Score", f"{sil_score:.3f}")
                             except:
                                 st.metric("Variables Usadas", len(variables))
-                        
-                        # Visualización PCA
+                          # Visualización PCA mejorada
                         st.subheader("🎯 Visualización de Segmentos (PCA)")
                         col1, col2 = st.columns([2, 1])
                         
                         with col1:
+                            import matplotlib.pyplot as plt
+                            import seaborn as sns
+                            
                             fig, ax = plt.subplots(figsize=(10, 8))
                             pca_coords = pca.transform(preproc.transform(df[variables].dropna()))
                             
+                            # Scatter plot mejorado con más información
                             scatter = sns.scatterplot(
                                 x=pca_coords[:,0], 
                                 y=pca_coords[:,1], 
@@ -430,10 +430,12 @@ if df is not None:
                             )
                             
                             # Añadir centroides
+                            centroids = []
                             for segment in df_seg['Segmento'].unique():
                                 mask = df_seg['Segmento'] == segment
                                 centroid_x = pca_coords[mask, 0].mean()
                                 centroid_y = pca_coords[mask, 1].mean()
+                                centroids.append([centroid_x, centroid_y])
                                 ax.scatter(centroid_x, centroid_y, c='black', s=200, marker='x', linewidths=3)
                             
                             ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} varianza)", fontsize=12)
@@ -450,6 +452,7 @@ if df is not None:
                                 percentage = (count / len(df_seg)) * 100
                                 st.write(f"**Segmento {segment}:** {count} clientes ({percentage:.1f}%)")
                             
+                            # Varianza explicada por PCA
                             st.markdown("**🔍 Varianza Explicada:**")
                             total_variance = sum(pca.explained_variance_ratio_[:2]) * 100
                             st.write(f"PC1 + PC2: {total_variance:.1f}%")
@@ -458,19 +461,25 @@ if df is not None:
                         st.subheader("📋 Características por Segmento")
                         st.dataframe(caracteristicas.round(3), use_container_width=True)
 
-                        # Análisis por variables
+                        # Distribución de Variables por Segmento mejorada
                         st.subheader("📈 Análisis de Variables por Segmento")
                         numeric_vars_for_boxplot = [col for col in variables if pd.api.types.is_numeric_dtype(df[col])]
 
-                        if numeric_vars_for_boxplot:
-                            selected_vars_for_boxplot = st.multiselect(
+                        if not numeric_vars_for_boxplot:
+                            st.info("No hay variables numéricas en la selección actual para mostrar distribuciones detalladas por segmento.")
+                        else:                            selected_vars_for_boxplot = st.multiselect(
                                 "Selecciona variables numéricas para analizar por segmento:",
                                 options=numeric_vars_for_boxplot,
                                 default=numeric_vars_for_boxplot[:min(len(numeric_vars_for_boxplot), 2)],
-                                key="segment_boxplot_vars"
+                                key="segment_boxplot_vars",
+                                help="Selecciona hasta 4 variables para comparar entre segmentos"
                             )
 
                             if selected_vars_for_boxplot:
+                                # Organizar en grid de 2 columnas
+                                n_vars = len(selected_vars_for_boxplot)
+                                n_cols = min(2, n_vars)
+                                
                                 for i, var_to_plot in enumerate(selected_vars_for_boxplot):
                                     if i % 2 == 0:
                                         col1, col2 = st.columns(2)
@@ -479,7 +488,10 @@ if df is not None:
                                         fig_box_seg, ax_box_seg = plt.subplots(figsize=(8, 6))
                                         plt.style.use('seaborn-v0_8-whitegrid')
                                         
+                                        # Boxplot con colores personalizados
                                         sns.boxplot(data=df_seg, x='Segmento', y=var_to_plot, ax=ax_box_seg, palette='Set2')
+                                        
+                                        # Añadir puntos individuales
                                         sns.stripplot(data=df_seg, x='Segmento', y=var_to_plot, ax=ax_box_seg, 
                                                     color='black', alpha=0.3, size=3)
                                         
@@ -489,15 +501,14 @@ if df is not None:
                                         ax_box_seg.set_ylabel(var_to_plot, fontsize=10)
                                         plt.tight_layout()
                                         st.pyplot(fig_box_seg)
-                                
+                                  # Análisis estadístico
                                 with st.expander("📊 Análisis Estadístico Detallado", expanded=False):
                                     for var in selected_vars_for_boxplot:
                                         st.markdown(f"**{var}:**")
                                         stats_by_segment = df_seg.groupby('Segmento')[var].agg(['mean', 'std', 'median']).round(3)
                                         st.dataframe(stats_by_segment, use_container_width=True)
-                        else:
-                            st.info("No hay variables numéricas disponibles para análisis por segmento.")
-                            
+                            else:
+                                st.info("Selecciona al menos una variable numérica para visualizar su distribución por segmento.")
                     except Exception as e:
                         st.error(f"❌ Error durante la segmentación: {e}")
         else:
@@ -509,11 +520,11 @@ if df is not None:
         **Objetivo:** Predecir la próxima línea de producto que comprará un cliente basándose en su historial y características.
         
         **Algoritmo:** Red neuronal multicapa con clasificación multiclase que aprende patrones de compra complejos.
-        """)
-        
+        """)        
         can_classify = 'Product line' in df.columns
         
         if can_classify:
+            # Información sobre las clases disponibles
             product_lines = df['Product line'].unique()
             col1, col2 = st.columns([2, 1])
             
@@ -522,6 +533,7 @@ if df is not None:
             with col2:
                 st.metric("Clases Únicas", len(product_lines))
             
+            # Mostrar distribución de clases
             with st.expander("📊 Distribución de Líneas de Producto", expanded=False):
                 class_dist = df['Product line'].value_counts()
                 st.bar_chart(class_dist)
@@ -530,6 +542,7 @@ if df is not None:
             if st.button("🚀 Entrenar modelo de clasificación", type="primary"):
                 with st.spinner("Entrenando modelo de clasificación..."):
                     try:
+                        # Filtrar variables para excluir Product line si está en la selección
                         input_vars = [v for v in variables if v != 'Product line']
                         modelo, preproc, resultados = modelo_3_clasificacion.entrenar_clasificacion(df[input_vars + ['Product line']].dropna())
                         
@@ -540,17 +553,22 @@ if df is not None:
                         with col1:
                             st.metric("Exactitud (Accuracy)", f"{resultados['accuracy']:.3f}")
                         with col2:
+                            # Calcular precisión promedio
                             precision_avg = np.mean([v['precision'] for v in resultados['reporte'].values() if isinstance(v, dict) and 'precision' in v])
                             st.metric("Precisión Promedio", f"{precision_avg:.3f}")
                         with col3:
+                            # Calcular recall promedio
                             recall_avg = np.mean([v['recall'] for v in resultados['reporte'].values() if isinstance(v, dict) and 'recall' in v])
                             st.metric("Recall Promedio", f"{recall_avg:.3f}")
 
-                        # Reporte de clasificación
+                        # Reporte de clasificación mejorado
                         st.subheader("📋 Reporte de Clasificación Detallado")
                         col1, col2 = st.columns([2, 1])
                         
                         with col1:
+                            # Matriz de confusión moderna
+                            import matplotlib.pyplot as plt
+                            import seaborn as sns
                             fig, ax = plt.subplots(figsize=(10, 8))
                             plt.style.use('seaborn-v0_8-whitegrid')
                             
@@ -570,39 +588,47 @@ if df is not None:
                             st.pyplot(fig)
                         
                         with col2:
+                            # Tabla de métricas por clase
                             reporte_df = pd.DataFrame(resultados['reporte']).transpose()
+                            # Filtrar solo las clases (no promedios)
                             class_metrics = reporte_df.drop(['accuracy', 'macro avg', 'weighted avg'], errors='ignore')
                             st.dataframe(class_metrics.round(3), use_container_width=True)
 
-                        # Análisis de importancia de variables
+                        # Análisis de Contribución de Variables mejorado
                         st.subheader("📈 Análisis de Importancia de Variables")
-                        if hasattr(modelo, 'coefs_') and preproc is not None:
-                            try:
+                        if hasattr(modelo, 'coefs_') and preproc is not None:                            try:
                                 feature_names = preproc.get_feature_names_out()
                                 
                                 if len(modelo.coefs_) > 0:
+                                    import numpy as np
+                                    # Usar la media de las magnitudes absolutas de los pesos de la primera capa
                                     importancias = np.mean(np.abs(modelo.coefs_[0]), axis=1)
 
                                     if len(importancias) == len(feature_names):
                                         imp_df_cls = pd.DataFrame({"Variable": feature_names, "Importancia Estimada": importancias})
                                         imp_df_cls = imp_df_cls.sort_values("Importancia Estimada", ascending=False).head(15)
                                         
+                                        # Gráfico de importancia mejorado
                                         fig_imp_cls, ax_imp_cls = plt.subplots(figsize=(12, 8))
-                                        sns.barplot(data=imp_df_cls, x="Importancia Estimada", y="Variable", ax=ax_imp_cls, palette="viridis")
+                                        sns.barplot(x="Importancia Estimada", y="Variable", data=imp_df_cls, ax=ax_imp_cls, palette="viridis")
                                         ax_imp_cls.set_title("Top 15 Variables Más Importantes (MLP)", fontsize=14, fontweight='bold')
+                                        ax_imp_cls.set_xlabel("Importancia Estimada", fontsize=12)
                                         plt.tight_layout()
                                         st.pyplot(fig_imp_cls)
                                         
-                                        st.caption("Nota: La 'importancia' para MLPClassifier se estima a partir de la magnitud de los pesos de la primera capa y es experimental.")
+                                        st.caption("💡 Nota: La importancia se estima a partir de la magnitud promedio de los pesos de la primera capa.")
+                                        
+                                        # Tabla de importancias
+                                        with st.expander("📋 Ver tabla completa de importancias", expanded=False):
+                                            st.dataframe(imp_df_cls, use_container_width=True)
                                     else:
-                                        st.info("No se pudo emparejar la importancia con los nombres de las variables.")
+                                        st.info(f"No se pudo emparejar la importancia con los nombres de las variables (features: {len(feature_names)}, importances: {len(importancias)}).")
                                 else:
                                     st.info("El modelo no tiene coeficientes disponibles para estimar la importancia.")
                             except Exception as e_imp:
                                 st.warning(f"No se pudo calcular la importancia de variables: {e_imp}")
                         else:
                             st.info("💡 El modelo MLPClassifier no permite extracción directa de importancia de variables.")
-                            
                     except Exception as e:
                         st.error(f"❌ Error durante el entrenamiento del modelo: {e}")
         else:
@@ -619,6 +645,7 @@ if df is not None:
         **Aplicaciones:** Detección de fraudes, errores de captura, comportamientos inusuales de compra.
         """)
         
+        # Validar variables
         numeric_vars = [v for v in variables if pd.api.types.is_numeric_dtype(df[v])]
         can_detect = len(variables) >= 1
         
@@ -657,20 +684,16 @@ if df is not None:
                         with col3:
                             st.metric("Datos Normales", total_normales)
                         with col4:
-                            percentage = (total_anomalias / len(df_anom)) * 100
-                            st.metric("% Anomalías", f"{percentage:.2f}%")
+                            st.metric("% Anomalías", f"{(total_anomalias/len(df_anom)*100):.2f}%")
 
                         # Vista previa de anomalías
-                        st.subheader("👀 Vista Previa de Resultados")
-                        col1, col2 = st.columns([1, 1])
+                        st.subheader("📋 Vista Previa de Resultados")
+                        col1, col2 = st.columns(2)
                         
                         with col1:
                             st.markdown("**Datos Normales (muestra):**")
                             normales = df_anom[df_anom['Anomalía'] == 'No'].head()
-                            if len(normales) > 0:
-                                st.dataframe(normales.head(), use_container_width=True)
-                            else:
-                                st.info("No hay datos normales para mostrar.")
+                            st.dataframe(normales, use_container_width=True)
                         
                         with col2:
                             st.markdown("**Anomalías Detectadas:**")
@@ -684,99 +707,140 @@ if df is not None:
                         st.subheader("📊 Distribución de Anomalías")
                         anomaly_dist = df_anom['Anomalía'].value_counts()
                         
+                        # Gráfico de barras mejorado
                         fig_dist, ax_dist = plt.subplots(figsize=(8, 6))
                         colors = ['#2ecc71', '#e74c3c']  # Verde para normal, rojo para anomalías
-                        bars = ax_dist.bar(anomaly_dist.index, anomaly_dist.values, color=colors, alpha=0.8)
+                        bars = ax_dist.bar(anomaly_dist.index, anomaly_dist.values, color=colors)
+                        ax_dist.set_title('Distribución de Datos Normales vs Anomalías', fontsize=14, fontweight='bold')
+                        ax_dist.set_ylabel('Cantidad', fontsize=12)
+                        ax_dist.set_xlabel('Tipo de Dato', fontsize=12)
                         
-                        # Añadir etiquetas en las barras
+                        # Añadir valores en las barras
                         for bar, value in zip(bars, anomaly_dist.values):
                             height = bar.get_height()
                             ax_dist.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
                                        f'{value}\n({value/len(df_anom)*100:.1f}%)', 
                                        ha='center', va='bottom', fontweight='bold')
                         
-                        ax_dist.set_title('Distribución de Anomalías vs Datos Normales', fontsize=14, fontweight='bold')
-                        ax_dist.set_xlabel('Tipo de Dato', fontsize=12)
-                        ax_dist.set_ylabel('Cantidad', fontsize=12)
-                        plt.style.use('seaborn-v0_8-whitegrid')
                         plt.tight_layout()
-                        st.pyplot(fig_dist)
-
-                        # Visualización detallada de anomalías
+                        st.pyplot(fig_dist)                        # Visualización avanzada de anomalías
                         st.subheader("🎯 Visualización Detallada de Anomalías")
                         
+                        # Definir variables numéricas disponibles para visualización
                         numeric_cols_for_viz = [col for col in df_anom.columns if col != 'Anomalía' and pd.api.types.is_numeric_dtype(df_anom[col])]
                         
-                        if numeric_cols_for_viz:
+                        if not numeric_cols_for_viz:
+                            st.info("No hay variables numéricas disponibles para visualización detallada de anomalías.")
+                        else:
                             selected_viz_vars = st.multiselect(
                                 "Selecciona hasta 2 variables numéricas para análisis visual:",
                                 options=numeric_cols_for_viz,
                                 default=numeric_cols_for_viz[:min(len(numeric_cols_for_viz), 2)],
                                 max_selections=2,
-                                key="viz_anom_vars_modern"
+                                key="viz_anom_vars_modern",
+                                help="Visualizar patrones entre datos normales y anomalías"
                             )
 
                             if selected_viz_vars:
+                                import matplotlib.pyplot as plt
+                                import seaborn as sns
                                 plt.style.use('seaborn-v0_8-whitegrid')
 
                                 if len(selected_viz_vars) == 1:
                                     var_to_plot = selected_viz_vars[0]
-                                    st.write(f"Distribución de '{var_to_plot}' para datos normales vs. anomalías:")
                                     
                                     col1, col2 = st.columns(2)
                                     
                                     with col1:
-                                        fig, ax = plt.subplots(figsize=(10, 6))
+                                        st.markdown(f"**📊 Distribución de {var_to_plot}**")
+                                        fig, ax = plt.subplots(figsize=(8, 6))
                                         sns.histplot(data=df_anom, x=var_to_plot, hue='Anomalía', kde=True, ax=ax, 
-                                                   palette={'No':'#5dade2', 'Sí':'#e74c3c'})
-                                        ax.set_title(f"Distribución de {var_to_plot}", fontsize=14, fontweight='bold')
-                                        ax.set_xlabel(var_to_plot, fontsize=12)
-                                        ax.set_ylabel("Frecuencia", fontsize=12)
-                                        ax.legend(title='Tipo de Dato')
+                                                   palette={'No':'#3498db', 'Sí':'#e74c3c'}, alpha=0.7)
+                                        ax.set_title(f"Distribución de {var_to_plot}", fontsize=12, fontweight='bold')
+                                        ax.set_xlabel(var_to_plot, fontsize=10)
+                                        ax.set_ylabel("Densidad", fontsize=10)
+                                        ax.legend(title='Tipo de Dato', labels=['Normal', 'Anomalía'])
+                                        plt.tight_layout()
                                         st.pyplot(fig)
 
                                     with col2:
-                                        fig_box, ax_box = plt.subplots(figsize=(10, 6))
+                                        st.markdown(f"**📦 Comparación por Boxplot**")
+                                        fig_box, ax_box = plt.subplots(figsize=(8, 6))
                                         sns.boxplot(data=df_anom, x='Anomalía', y=var_to_plot, ax=ax_box, 
-                                                  palette={'No':'#5dade2', 'Sí':'#e74c3c'})
-                                        ax_box.set_title(f"Boxplot de {var_to_plot} por Tipo de Dato", fontsize=14, fontweight='bold')
-                                        ax_box.set_xlabel("Tipo de Dato", fontsize=12)
-                                        ax_box.set_ylabel(var_to_plot, fontsize=12)
+                                                  palette={'No':'#3498db', 'Sí':'#e74c3c'})
+                                        sns.stripplot(data=df_anom, x='Anomalía', y=var_to_plot, ax=ax_box,
+                                                    color='black', alpha=0.4, size=3)
+                                        ax_box.set_title(f"Boxplot de {var_to_plot}", fontsize=12, fontweight='bold')
+                                        ax_box.set_xlabel("Tipo de Dato", fontsize=10)
+                                        ax_box.set_ylabel(var_to_plot, fontsize=10)
+                                        ax_box.set_xticklabels(['Normal', 'Anomalía'])
+                                        plt.tight_layout()
                                         st.pyplot(fig_box)
 
                                 elif len(selected_viz_vars) == 2:
                                     var1, var2 = selected_viz_vars[0], selected_viz_vars[1]
-                                    st.write(f"Relación entre '{var1}' y '{var2}' para datos normales vs. anomalías:")
                                     
-                                    fig, ax = plt.subplots(figsize=(10, 6))
-                                    sns.scatterplot(data=df_anom, x=var1, y=var2, hue='Anomalía', style='Anomalía', ax=ax, 
-                                                  palette={'No':'#5dade2', 'Sí':'#e74c3c'}, markers={'No':'o', 'Sí':'X'}, s=100)
+                                    st.markdown(f"**🔗 Relación entre {var1} y {var2}**")
+                                    fig, ax = plt.subplots(figsize=(12, 8))
+                                    
+                                    # Scatter plot con estilos diferenciados
+                                    sns.scatterplot(data=df_anom, x=var1, y=var2, hue='Anomalía', style='Anomalía', 
+                                                  ax=ax, palette={'No':'#3498db', 'Sí':'#e74c3c'}, 
+                                                  markers={'No':'o', 'Sí':'X'}, s=80, alpha=0.8)
+                                    
                                     ax.set_title(f"Relación entre {var1} y {var2}", fontsize=14, fontweight='bold')
                                     ax.set_xlabel(var1, fontsize=12)
                                     ax.set_ylabel(var2, fontsize=12)
-                                    ax.legend(title='Tipo de Dato')
+                                    ax.legend(title='Tipo de Dato', labels=['Normal', 'Anomalía'])
+                                    ax.grid(True, alpha=0.3)
+                                    plt.tight_layout()
                                     st.pyplot(fig)
                                 
-                                # Estadísticas descriptivas
-                                st.subheader("📈 Estadísticas Descriptivas por Tipo de Dato")
+                                # Estadísticas comparativas
+                                st.subheader("📈 Análisis Estadístico Comparativo")
                                 try:
-                                    desc_stats = df_anom.groupby('Anomalía')[selected_viz_vars].agg(['mean', 'std', 'min', 'max']).reset_index()
-                                    desc_stats.columns = [' - '.join(col).strip() if isinstance(col, tuple) and col[1] else col[0] for col in desc_stats.columns.values]
-                                    st.dataframe(desc_stats, use_container_width=True)
-                                except Exception:
-                                    st.dataframe(df_anom.groupby('Anomalía')[selected_viz_vars].describe(), use_container_width=True)
+                                    # Estadísticas por tipo de dato
+                                    stats_comparison = df_anom.groupby('Anomalía')[selected_viz_vars].agg(['count', 'mean', 'std', 'min', 'max']).round(3)
+                                    
+                                    # Reorganizar para mejor visualización
+                                    stats_flat = stats_comparison.reset_index()
+                                    stats_flat.columns = [' - '.join(col).strip() if isinstance(col, tuple) and col[1] else col[0] for col in stats_flat.columns.values]
+                                    
+                                    st.dataframe(stats_flat, use_container_width=True)
+                                    
+                                    # Interpretación automática
+                                    if len(selected_viz_vars) == 1:
+                                        var = selected_viz_vars[0]
+                                        normal_mean = df_anom[df_anom['Anomalía'] == 'No'][var].mean()
+                                        anomaly_mean = df_anom[df_anom['Anomalía'] == 'Sí'][var].mean()
+                                        
+                                        if abs(anomaly_mean - normal_mean) / normal_mean > 0.2:  # 20% diferencia
+                                            st.info(f"💡 **Insight**: Las anomalías muestran valores de {var} significativamente {'mayores' if anomaly_mean > normal_mean else 'menores'} que los datos normales.")
+                                    
+                                except Exception as stat_e:
+                                    st.warning(f"No se pudieron generar estadísticas detalladas: {stat_e}")
+                                    # Fallback a estadísticas simples
+                                    st.dataframe(df_anom.groupby('Anomalía')[selected_viz_vars].describe().round(3))
                             else:
-                                st.info("Selecciona al menos una variable para visualizar anomalías.")
-                        else:
-                            st.info("No hay variables numéricas disponibles para visualización detallada de anomalías.")
-                            
+                                st.info("🔍 Selecciona al menos una variable numérica para visualizar los patrones de anomalías.")
+
                     except Exception as e:
                         st.error(f"❌ Error durante la detección de anomalías: {e}")
+                        with st.expander("🐛 Detalles del error", expanded=False):
+                            st.text(str(e))
         else:
             st.info("⚠️ Selecciona al menos una variable para detectar anomalías.")
-    
     else:
-        st.info("Selecciona un modelo para ver su descripción y cómo se aplica a los datos del supermercado.")
-        
+        st.info("💡 Selecciona un modelo para ver su descripción y aplicación a los datos del supermercado.")
 else:
-    st.info("Por favor, carga un archivo de datos para comenzar el análisis y la modelización.")
+    st.info("📁 Por favor, carga un archivo de datos para comenzar el análisis y la modelización.")
+
+# Pie de página con información adicional
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #7f8c8d; margin-top: 2em;'>
+    <p><b>Modelos Conceptuales de Redes Neuronales para Supermercados</b></p>
+    <p>Universidad Central - Maestría en Analítica de Datos</p>
+    <p>Dashboard interactivo para exploración y modelado de datos de supermercado</p>
+</div>
+""", unsafe_allow_html=True)

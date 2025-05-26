@@ -21,9 +21,25 @@ from sklearn.metrics import classification_report
 
 # Función para preparar los datos para detección de anomalías
 def preparar_datos_anomalias(df, variables):
-    cat_features = [col for col in variables if df[col].dtype == 'object']
-    num_features = [col for col in variables if df[col].dtype != 'object']
-    X = df[variables]
+    X = df[variables].copy() # Usar .copy() para evitar SettingWithCopyWarning
+
+    # Identificar tipos de columnas
+    datetime_features = [col for col in variables if pd.api.types.is_datetime64_any_dtype(X[col])]
+    cat_features = [col for col in variables if X[col].dtype == 'object' and col not in datetime_features]
+    
+    # Convertir columnas datetime a timestamp numérico
+    for col in datetime_features:
+        X[col] = X[col].astype(np.int64) // 10**9 # Convertir a segundos Unix
+
+    # Actualizar lista de características numéricas para incluir las fechas convertidas
+    num_features = [col for col in variables if (X[col].dtype != 'object' or col in datetime_features)]
+    
+    # Asegurarse de que las cat_features no estén en num_features si originalmente eran object pero no datetime
+    # y viceversa, aunque la lógica anterior debería cubrirlo.
+    # Re-evaluar cat_features para asegurar que solo sean strings después de la conversión de datetime
+    cat_features = [col for col in cat_features if X[col].dtype == 'object']
+
+
     preprocessor = ColumnTransformer([
         ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features),
         ('num', StandardScaler(), num_features)
