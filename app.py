@@ -120,47 +120,50 @@ if df is not None:
         - ✅ **Cualquier variable numérica** que pueda tener valores atípicos
         - ⚠️ **Mínimo 1 variable** requerida
         """)
+      # Inicializar estado de variables seleccionadas si no existe
+    if 'selected_variables' not in st.session_state:
+        st.session_state.selected_variables = list(df.columns)
     
-    # Selector de variables
-    col1, col2 = st.columns([2, 1])
+    # Botones de configuración rápida
+    st.markdown("**🔧 Acciones Rápidas:**")
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        variables = st.multiselect(
-            "Variables disponibles:", 
-            options=list(df.columns), 
-            default=list(df.columns), 
-            key="var_select",
-            help="Selecciona las variables que deseas usar en los modelos. Consulta las guías arriba para recomendaciones específicas."
-        )
-    
-    with col2:
-        st.markdown("**🔧 Acciones Rápidas:**")
-        
         if st.button("🎯 Config. Regresión", help="Seleccionar variables óptimas para regresión"):
             regression_vars = [col for col in df.columns if col not in ['Rating']]
-            st.session_state.var_select = regression_vars
-            st.rerun()
-        
+            st.session_state.selected_variables = regression_vars
+    
+    with col2:
         if st.button("👥 Config. Segmentación", help="Seleccionar variables óptimas para segmentación"):
             seg_vars = [col for col in df.columns if col in ['Total', 'Quantity', 'Unit price', 'gross income', 'Gender', 'Customer type', 'Branch', 'City']]
             if not seg_vars:
                 seg_vars = df.select_dtypes(include=['number']).columns.tolist()
-            st.session_state.var_select = seg_vars
-            st.rerun()
-        
+            st.session_state.selected_variables = seg_vars
+    
+    with col3:
         if st.button("🛍️ Config. Clasificación", help="Seleccionar variables óptimas para clasificación"):
             class_vars = [col for col in df.columns if col not in ['Product line']]
-            st.session_state.var_select = class_vars
-            st.rerun()
-        
+            st.session_state.selected_variables = class_vars
+    
+    with col4:
         if st.button("🔍 Config. Anomalías", help="Seleccionar variables óptimas para detección de anomalías"):
             anomaly_vars = df.select_dtypes(include=['number']).columns.tolist()
             if 'Date' in df.columns:
                 anomaly_vars.append('Date')
             if 'Time' in df.columns:
                 anomaly_vars.append('Time')
-            st.session_state.var_select = anomaly_vars
-            st.rerun()
+            st.session_state.selected_variables = anomaly_vars
+    
+    # Selector de variables
+    variables = st.multiselect(
+        "Variables disponibles:", 
+        options=list(df.columns), 
+        default=st.session_state.selected_variables, 
+        help="Selecciona las variables que deseas usar en los modelos. Consulta las guías arriba para recomendaciones específicas."
+    )
+    
+    # Actualizar el estado con la selección manual
+    st.session_state.selected_variables = variables
     
     # Información sobre la selección actual
     if variables:
