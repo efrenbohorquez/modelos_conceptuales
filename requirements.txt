@@ -1,11 +1,9 @@
-streamlit
-pandas
-numpy
-scikit-learn
-# tensorflow==2.15.0 # Descomenta si usas Python <=3.11
-matplotlib
-seaborn
-plotly
-openpyxl
-# Este archivo de requerimientos está alineado con la arquitectura conceptual ubicada en:
-# C:\Users\efren\Downloads\supermarket_nn_models_entrega\home\ubuntu\supermarket_nn_models\docs\modelos_conceptuales.md
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.17.0
+openpyxl>=3.1.0
+Pillow>=10.0.0

@@ -29,37 +29,72 @@ st.set_page_config(page_title="Modelos Conceptuales Supermercado", layout="wide"
 
 st.markdown("""
 <style>
-    body, .main, .stApp {
-        background-color: #ffffff !important;
-        color: #222 !important;
+    /* Estilos optimizados para Streamlit Cloud */
+    .main .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
     }
+    
     .main-title {
-        font-size:2.5rem;
-        font-weight:bold;
-        color:#2c3e50;
-        margin-bottom:0.5em;
+        font-size: 2.5rem !important;
+        font-weight: bold !important;
+        color: #2c3e50 !important;
+        margin-bottom: 0.5em !important;
+        text-align: center;
     }
+    
     .subtitle {
-        font-size:1.3rem;
-        color:#34495e;
-        margin-bottom:0.5em;
+        font-size: 1.2rem !important;
+        color: #34495e !important;
+        margin-bottom: 0.5em !important;
+        text-align: center;
     }
-    .stButton>button {
-        background-color: #3498db;
-        color: white;
-        font-weight: bold;
-        border-radius: 8px;
-        padding: 0.5em 1.5em;
-        margin: 0.5em 0;
+    
+    .stButton > button {
+        background-color: #3498db !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
+        padding: 0.5em 1.5em !important;
+        margin: 0.5em 0 !important;
+        border: none !important;
+        width: 100%;
     }
-    .stButton>button:hover {
-        background-color: #217dbb;
-        color: #ecf0f1;
+    
+    .stButton > button:hover {
+        background-color: #217dbb !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    .stDataFrame, .stTable {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 0.5em;
+    
+    /* Mejorar visualización de dataframes */
+    .stDataFrame {
+        border-radius: 8px !important;
+        overflow: hidden !important;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: #f8f9fa !important;
+    }
+    
+    /* Métricas styling */
+    [data-testid="metric-container"] {
+        background-color: #f8f9fa !important;
+        border: 1px solid #e9ecef !important;
+        padding: 1rem !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    
+    /* Tabs styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
     }
 </style>
 """, unsafe_allow_html=True)
