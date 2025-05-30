@@ -21,29 +21,32 @@ from sklearn.metrics import classification_report
 
 # Función para preparar los datos para detección de anomalías
 def preparar_datos_anomalias(df, variables):
-    X = df[variables].copy() # Usar .copy() para evitar SettingWithCopyWarning
+    X = df[variables].copy()
 
-    # Identificar tipos de columnas
-    datetime_features = [col for col in variables if pd.api.types.is_datetime64_any_dtype(X[col])]
-    cat_features = [col for col in variables if X[col].dtype == 'object' and col not in datetime_features]
+    # Convertir todos los tipos de datos de manera simple y robusta
+    for col in X.columns:
+        if pd.api.types.is_datetime64_any_dtype(X[col]):
+            # Convertir datetime a timestamp numérico
+            X[col] = pd.to_datetime(X[col]).astype(np.int64) // 10**9
+        elif X[col].dtype == 'object':
+            # Convertir todos los objetos a string para evitar tipos mixtos
+            X[col] = X[col].astype(str)
     
-    # Convertir columnas datetime a timestamp numérico
-    for col in datetime_features:
-        X[col] = X[col].astype(np.int64) // 10**9 # Convertir a segundos Unix
-
-    # Actualizar lista de características numéricas para incluir las fechas convertidas
-    num_features = [col for col in variables if (X[col].dtype != 'object' or col in datetime_features)]
+    # Identificar columnas numéricas y categóricas después de la conversión
+    num_features = [col for col in X.columns if pd.api.types.is_numeric_dtype(X[col])]
+    cat_features = [col for col in X.columns if col not in num_features]
     
-    # Asegurarse de que las cat_features no estén en num_features si originalmente eran object pero no datetime
-    # y viceversa, aunque la lógica anterior debería cubrirlo.
-    # Re-evaluar cat_features para asegurar que solo sean strings después de la conversión de datetime
-    cat_features = [col for col in cat_features if X[col].dtype == 'object']
-
-
-    preprocessor = ColumnTransformer([
-        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features),
-        ('num', StandardScaler(), num_features)
-    ])
+    # Crear preprocesador
+    transformers = []
+    if cat_features:
+        transformers.append(('cat', OneHotEncoder(handle_unknown='ignore'), cat_features))
+    if num_features:
+        transformers.append(('num', StandardScaler(), num_features))
+    
+    if not transformers:
+        raise ValueError("No se encontraron variables válidas para procesar")
+    
+    preprocessor = ColumnTransformer(transformers)
     X_processed = preprocessor.fit_transform(X)
     return X_processed, preprocessor
 

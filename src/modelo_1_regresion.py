@@ -15,19 +15,46 @@ from sklearn.impute import SimpleImputer
 
 # Función para preparar los datos para regresión
 def preparar_datos_regresion(df):
-    # Variables categóricas y numéricas según la documentación conceptual
-    cat_features = ['Branch', 'City', 'Customer type', 'Gender', 'Product line', 'Payment']
-    num_features = ['Unit price', 'Quantity', 'Tax 5%', 'Total', 'cogs', 'gross income']
+    # Variables ideales para regresión
+    ideal_cat_features = ['Branch', 'City', 'Customer type', 'Gender', 'Product line', 'Payment']
+    ideal_num_features = ['Unit price', 'Quantity', 'Tax 5%', 'Total', 'cogs', 'gross income']
     target = 'Rating'
+    
+    # Verificar disponibilidad de columnas
+    available_columns = list(df.columns)
+    
+    # Verificar que el target existe
+    if target not in available_columns:
+        raise ValueError(f"Columna objetivo '{target}' no encontrada en el dataset")
+    
+    # Filtrar características disponibles
+    cat_features = [col for col in ideal_cat_features if col in available_columns]
+    num_features = [col for col in ideal_num_features if col in available_columns]
+    
+    # Asegurar que tenemos al menos algunas características
+    if len(cat_features) == 0:
+        cat_features = [col for col in available_columns if df[col].dtype == 'object' and col != target][:6]
+    
+    if len(num_features) < 2:
+        num_features = [col for col in available_columns 
+                       if pd.api.types.is_numeric_dtype(df[col]) and col != target][:6]
+    
+    all_features = cat_features + num_features
+    
+    if len(all_features) == 0:
+        raise ValueError("No se encontraron características válidas para regresión")
+    
+    X = df[all_features].copy()
+    y = df[target].copy()
 
-    X = df[cat_features + num_features]
-    y = df[target]
-
-    # Preprocesamiento: imputación, codificación y escalado
-    preprocessor = ColumnTransformer([
-        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features),
-        ('num', StandardScaler(), num_features)
-    ])
+    # Crear preprocesador dinámicamente
+    transformers = []
+    if cat_features:
+        transformers.append(('cat', OneHotEncoder(handle_unknown='ignore'), cat_features))
+    if num_features:
+        transformers.append(('num', StandardScaler(), num_features))
+    
+    preprocessor = ColumnTransformer(transformers)
 
     X_processed = preprocessor.fit_transform(X)
     return X_processed, y, preprocessor

@@ -1,12 +1,29 @@
-# Este archivo está alineado y documentado según la arquitectura conceptual ubicada en:
-# C:\Users\efren\Downloads\supermarket_nn_models_entrega\home\ubuntu\supermarket_nn_models\docs\modelos_conceptuales.md
+# Dashboard optimizado para datos de supermercado en presentación de maestría
+# Modelos conceptuales de redes neuronales aplicados a análisis de ventas retail
+# Arquitectura simplificada para uso exclusivo con dataset supermarket_sales.xlsx
+
+# Configuración para suprimir advertencias de PyArrow
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*pyarrow.*")
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import sys
+import os
+
+# Asegurar que el directorio src esté en el path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, 'src')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 from src import data_loader, eda, modelo_1_regresion, modelo_2_segmentacion, modelo_3_clasificacion, modelo_4_anomalias
+from src.mapeo_columnas import mapear_columnas_dataset, verificar_columnas_disponibles
+from src.data_utils import optimize_dataframe_for_streamlit, display_data_quality_summary, safe_dataframe_display
 
 st.set_page_config(page_title="Modelos Conceptuales Supermercado", layout="wide", initial_sidebar_state="expanded")
 
@@ -50,22 +67,129 @@ st.markdown("""
 st.markdown('<div class="main-title">Modelos Conceptuales de Redes Neuronales para Supermercados</div>', unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.header("Carga de datos")
+st.sidebar.header("📊 Gestión de Datos")
 try:
     st.sidebar.image("data/logo_uc.png", width=120)
 except Exception:
-    st.sidebar.warning("No se pudo cargar el logo institucional. Verifica que 'data/logo_uc.png' exista.")
+    st.sidebar.warning("Logo no disponible")
 
 st.sidebar.markdown('<div class="subtitle">Maestría en Analítica de Datos<br>Universidad Central</div>', unsafe_allow_html=True)
-st.sidebar.markdown('<div class="subtitle">Carga de datos</div>', unsafe_allow_html=True)
-archivo = st.sidebar.file_uploader("Sube tu archivo de datos (xlsx)", type=["xlsx"])
 
-df = None
-if archivo:
-    df = data_loader.cargar_datos(archivo)
-    st.success("Datos cargados correctamente.")
+# === CARGA DE DATOS PARA ANÁLISIS ACADÉMICO ===
+st.sidebar.markdown("---")
+st.sidebar.subheader("🗂️ Dataset de Supermercado")
+
+# Inicializar estado de la sesión para el dataframe
+if 'df' not in st.session_state:
+    st.session_state.df = None
+
+# Verificar dataset principal
+dataset_info = data_loader.verificar_dataset_real()
+
+# Mostrar estado del dataset
+if dataset_info['disponible']:
+    st.sidebar.success("✅ Dataset de ventas disponible")
+    st.sidebar.caption(f"📊 {dataset_info['registros']} registros")
+    
+    if st.sidebar.button("🚀 Cargar Datos de Supermercado", type="primary", key="load_main_dataset"):
+        with st.spinner("Cargando datos de ventas..."):
+            df_temp = data_loader.cargar_datos()
+            if df_temp is not None:
+                st.session_state.df = df_temp
+                st.sidebar.success("✅ Datos cargados exitosamente")
+                st.rerun()
 else:
-    st.info("Por favor, sube un archivo de datos para comenzar.")
+    st.sidebar.error("❌ Dataset principal no disponible")
+    st.sidebar.info("💡 Generando datos sintéticos...")
+    
+    if st.sidebar.button("🧪 Usar Datos Sintéticos", type="secondary", key="load_synthetic_data"):
+        with st.spinner("Generando datos sintéticos..."):
+            df_temp = data_loader.cargar_datos()
+            if df_temp is not None:
+                st.session_state.df = df_temp
+                st.sidebar.success("✅ Datos sintéticos generados")
+                st.rerun()
+
+# Opción adicional para cargar archivo personalizado
+with st.sidebar.expander("📁 Cargar Archivo Personalizado"):
+    archivo = st.file_uploader("Sube archivo Excel/CSV", type=["xlsx", "csv"], key="file_uploader")
+    if archivo:
+        with st.spinner("Procesando archivo..."):
+            df_temp = data_loader.cargar_datos(archivo)
+            if df_temp is not None:
+                st.session_state.df = df_temp
+                st.sidebar.success("✅ Archivo cargado exitosamente")
+                st.rerun()
+
+# Obtener el dataframe del estado de la sesión
+df = st.session_state.df
+
+# Optimizar DataFrame para Streamlit si existe
+if df is not None:
+    df = optimize_dataframe_for_streamlit(df)
+    st.session_state.df = df  # Guardar la versión optimizada
+
+# Mostrar estado actual de los datos en la barra lateral
+st.sidebar.markdown("---")
+if df is not None:
+    st.sidebar.success(f"📊 **Dataset Activo**")
+    st.sidebar.info(f"📈 {len(df)} registros x {len(df.columns)} columnas")
+    if st.sidebar.button("🗑️ Limpiar Datos", key="clear_data"):
+        st.session_state.df = None
+        st.rerun()
+else:
+    st.sidebar.warning("⚠️ **Sin datos cargados**")
+    st.sidebar.caption("👆 Usa los botones de arriba para cargar datos")
+
+# Aplicar mapeo de columnas si se cargaron datos
+if df is not None:
+    # Verificar compatibilidad con modelos ML para datos de supermercado
+    try:
+        columnas_requeridas = ['Branch', 'City', 'Customer type', 'Gender', 'Product line', 'Payment']
+        info_columnas = verificar_columnas_disponibles(df, columnas_requeridas)
+        
+        st.info(f"🔍 Compatibilidad con modelos ML: {info_columnas['porcentaje_disponible']:.1f}%")
+        
+        if info_columnas['porcentaje_disponible'] < 50:
+            st.warning("⚠️ Se requiere mapeo de columnas para compatibilidad con modelos ML")
+            if st.button("🔄 Aplicar Mapeo Automático", type="secondary"):
+                df = mapear_columnas_dataset(df)
+                st.success("✅ Mapeo aplicado exitosamente")
+        else:
+            st.success("✅ Dataset compatible con modelos ML")
+    except Exception as e:
+        st.warning(f"⚠️ Error en mapeo automático: {e}")
+        st.info("Continuando con columnas originales del dataset.")
+else:
+    # Pantalla de bienvenida cuando no hay datos cargados
+    st.markdown("## 👋 ¡Bienvenido al Dashboard de Modelos Conceptuales!")
+    
+    st.markdown("""
+    ### 🚀 **Pasos para comenzar:**
+    
+    1. **📊 Cargar datos**: Usa la barra lateral para cargar el dataset de supermercado
+    2. **🔍 Explorar**: Revisa el análisis descriptivo de los datos
+    3. **🤖 Modelar**: Aplica los modelos de machine learning disponibles
+    
+    ---
+    
+    ### 📈 **Modelos Disponibles:**
+    
+    - **🎯 Regresión**: Predicción de calificación de clientes
+    - **👥 Segmentación**: Agrupación de clientes por comportamiento
+    - **🛍️ Clasificación**: Predicción de líneas de productos
+    - **🔍 Anomalías**: Detección de transacciones atípicas
+    
+    ---
+    
+    **💡 Para comenzar, haz clic en "🚀 Cargar Datos de Supermercado" en la barra lateral.**
+    """)
+    
+    # Mostrar información del dataset disponible
+    if dataset_info['disponible']:
+        st.success(f"✅ Dataset principal detectado ({dataset_info['registros']} registros)")
+    else:
+        st.warning("⚠️ Dataset principal no encontrado - se usarán datos sintéticos")
 
 if df is not None:
     st.header("Análisis Descriptivo")
@@ -123,43 +247,42 @@ if df is not None:
       # Inicializar estado de variables seleccionadas si no existe
     if 'selected_variables' not in st.session_state:
         st.session_state.selected_variables = list(df.columns)
-    
-    # Botones de configuración rápida
+      # Botones de configuración rápida
     st.markdown("**🔧 Acciones Rápidas:**")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if st.button("🎯 Config. Regresión", help="Seleccionar variables óptimas para regresión"):
+        if st.button("🎯 Config. Regresión", help="Seleccionar variables óptimas para regresión", key="config_regression_btn"):
             regression_vars = [col for col in df.columns if col not in ['Rating']]
             st.session_state.selected_variables = regression_vars
     
     with col2:
-        if st.button("👥 Config. Segmentación", help="Seleccionar variables óptimas para segmentación"):
+        if st.button("👥 Config. Segmentación", help="Seleccionar variables óptimas para segmentación", key="config_segmentation_btn"):
             seg_vars = [col for col in df.columns if col in ['Total', 'Quantity', 'Unit price', 'gross income', 'Gender', 'Customer type', 'Branch', 'City']]
             if not seg_vars:
                 seg_vars = df.select_dtypes(include=['number']).columns.tolist()
             st.session_state.selected_variables = seg_vars
     
     with col3:
-        if st.button("🛍️ Config. Clasificación", help="Seleccionar variables óptimas para clasificación"):
+        if st.button("🛍️ Config. Clasificación", help="Seleccionar variables óptimas para clasificación", key="config_classification_btn"):
             class_vars = [col for col in df.columns if col not in ['Product line']]
             st.session_state.selected_variables = class_vars
     
     with col4:
-        if st.button("🔍 Config. Anomalías", help="Seleccionar variables óptimas para detección de anomalías"):
+        if st.button("🔍 Config. Anomalías", help="Seleccionar variables óptimas para detección de anomalías", key="config_anomalies_btn"):
             anomaly_vars = df.select_dtypes(include=['number']).columns.tolist()
             if 'Date' in df.columns:
                 anomaly_vars.append('Date')
             if 'Time' in df.columns:
                 anomaly_vars.append('Time')
             st.session_state.selected_variables = anomaly_vars
-    
-    # Selector de variables
+      # Selector de variables
     variables = st.multiselect(
         "Variables disponibles:", 
         options=list(df.columns), 
         default=st.session_state.selected_variables, 
-        help="Selecciona las variables que deseas usar en los modelos. Consulta las guías arriba para recomendaciones específicas."
+        help="Selecciona las variables que deseas usar en los modelos. Consulta las guías arriba para recomendaciones específicas.",
+        key="main_variables_selector"
     )
     
     # Actualizar el estado con la selección manual
@@ -259,14 +382,12 @@ if df is not None:
         st.subheader("🎯 Modelo de Regresión (MLPRegressor)")
         st.markdown("""
         **Objetivo:** Predecir la calificación del cliente basándose en variables transaccionales y demográficas.
-        
-        **Algoritmo:** Red neuronal multicapa que aprende relaciones no lineales complejas entre las variables de entrada y la calificación del cliente.
+          **Algoritmo:** Red neuronal multicapa que aprende relaciones no lineales complejas entre las variables de entrada y la calificación del cliente.
         """)
         
         can_train = 'Rating' in df.columns and len([v for v in variables if pd.api.types.is_numeric_dtype(df[v])]) >= 1
-        
         if can_train:
-            if st.button("🚀 Entrenar modelo de regresión", type="primary"):
+            if st.button("🚀 Entrenar modelo de regresión", type="primary", key="train_regression_btn"):
                 with st.spinner("Entrenando modelo..."):
                     try:
                         input_vars = [v for v in variables if v != 'Rating']
@@ -376,8 +497,7 @@ if df is not None:
             
     elif opcion == "Segmentación de Clientes":
         st.subheader("👥 Segmentación de Clientes (PCA + KMeans)")
-        st.markdown("""
-        **Objetivo:** Agrupar clientes en segmentos homogéneos basándose en patrones de comportamiento.
+        st.markdown("""        **Objetivo:** Agrupar clientes en segmentos homogéneos basándose en patrones de comportamiento.
         
         **Algoritmo:** Reducción de dimensionalidad con PCA seguida de clustering con KMeans para identificar grupos naturales en los datos.
         """)
@@ -388,11 +508,11 @@ if df is not None:
         if can_segment:
             col1, col2 = st.columns([1, 3])
             with col1:
-                n_clusters = st.slider("Número de segmentos", min_value=2, max_value=8, value=3)
+                n_clusters = st.slider("Número de segmentos", min_value=2, max_value=8, value=3, key="segmentation_clusters_slider")
             with col2:
                 st.info(f"💡 Se usarán {len(numeric_vars)} variables numéricas para la segmentación")
             
-            if st.button("🚀 Ejecutar segmentación", type="primary"):
+            if st.button("🚀 Ejecutar segmentación", type="primary", key="execute_segmentation_btn"):
                 with st.spinner("Segmentando clientes..."):
                     try:
                         df_seg, kmeans, pca, preproc = modelo_2_segmentacion.segmentar_clientes(df[variables].dropna(), n_clusters=n_clusters)
@@ -522,15 +642,14 @@ if df is not None:
             
             with col1:
                 st.info(f"💡 Se entrenará para clasificar entre {len(product_lines)} líneas de producto")
-            with col2:
-                st.metric("Clases Únicas", len(product_lines))
+            with col2:            st.metric("Clases Únicas", len(product_lines))
             
             with st.expander("📊 Distribución de Líneas de Producto", expanded=False):
                 class_dist = df['Product line'].value_counts()
                 st.bar_chart(class_dist)
                 st.dataframe(class_dist.reset_index().rename(columns={'index': 'Línea de Producto', 'Product line': 'Cantidad'}))
             
-            if st.button("🚀 Entrenar modelo de clasificación", type="primary"):
+            if st.button("🚀 Entrenar modelo de clasificación", type="primary", key="train_classification_btn"):
                 with st.spinner("Entrenando modelo de clasificación..."):
                     try:
                         input_vars = [v for v in variables if v != 'Product line']
@@ -628,100 +747,59 @@ if df is not None:
         if can_detect:
             col1, col2 = st.columns([1, 2])
             
-            with col1:
-                contamination = st.slider(
+            with col1:                contamination = st.slider(
                     "Proporción esperada de anomalías", 
                     min_value=0.01, 
                     max_value=0.2, 
                     value=0.05, 
                     step=0.01,
-                    help="Porcentaje esperado de datos anómalos en el dataset"
-                )
+                    help="Porcentaje esperado de datos anómalos en el dataset",
+                    key="anomaly_contamination_slider"            )
             
             with col2:
                 st.info(f"💡 Se usarán {len(variables)} variables, {len(numeric_vars)} de ellas numéricas")
-                
-            if st.button("🚀 Detectar anomalías", type="primary"):
+            
+            if st.button("🚀 Detectar anomalías", type="primary", key="detect_anomalies_btn"):
                 with st.spinner("Detectando anomalías..."):
                     try:
                         df_anom, modelo, preproc = modelo_4_anomalias.detectar_anomalias(df[variables].dropna(), variables, contamination)
                         
                         st.success("✅ Detección de anomalías completada.")
                         
-                        # Métricas principales
-                        total_anomalias = sum(df_anom['Anomalía'] == 'Sí')
-                        total_normales = sum(df_anom['Anomalía'] == 'No')
+                        # Métricas de detección
+                        n_anomalies = (df_anom['Anomalía'] == 'Sí').sum()
+                        n_normal = (df_anom['Anomalía'] == 'No').sum()
                         
-                        col1, col2, col3, col4 = st.columns(4)
+                        col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.metric("Total Registros", len(df_anom))
+                            st.metric("Total de Observaciones", len(df_anom))
                         with col2:
-                            st.metric("Anomalías Detectadas", total_anomalias)
+                            st.metric("Anomalías Detectadas", n_anomalies, f"{(n_anomalies/len(df_anom)*100):.1f}%")
                         with col3:
-                            st.metric("Datos Normales", total_normales)
-                        with col4:
-                            percentage = (total_anomalias / len(df_anom)) * 100
-                            st.metric("% Anomalías", f"{percentage:.2f}%")
+                            st.metric("Datos Normales", n_normal, f"{(n_normal/len(df_anom)*100):.1f}%")
 
-                        # Vista previa de anomalías
-                        st.subheader("👀 Vista Previa de Resultados")
-                        col1, col2 = st.columns([1, 1])
+                        # Análisis de anomalías
+                        st.subheader("📊 Análisis de Anomalías Detectadas")
                         
-                        with col1:
-                            st.markdown("**Datos Normales (muestra):**")
-                            normales = df_anom[df_anom['Anomalía'] == 'No'].head()
-                            if len(normales) > 0:
-                                st.dataframe(normales.head(), use_container_width=True)
-                            else:
-                                st.info("No hay datos normales para mostrar.")
+                        if n_anomalies > 0:
+                            anomalias_df = df_anom[df_anom['Anomalía'] == 'Sí'].copy()
+                            with st.expander("🔍 Casos Anómalos Detectados", expanded=False):
+                                st.dataframe(anomalias_df.head(20), use_container_width=True)
+                                if len(anomalias_df) > 20:
+                                    st.info(f"Mostrando los primeros 20 de {len(anomalias_df)} casos anómalos.")
                         
-                        with col2:
-                            st.markdown("**Anomalías Detectadas:**")
-                            anomalias = df_anom[df_anom['Anomalía'] == 'Sí']
-                            if len(anomalias) > 0:
-                                st.dataframe(anomalias.head(), use_container_width=True)
-                            else:
-                                st.info("No se detectaron anomalías con los parámetros actuales.")
-
-                        # Distribución de anomalías
-                        st.subheader("📊 Distribución de Anomalías")
-                        anomaly_dist = df_anom['Anomalía'].value_counts()
+                        # Visualización de anomalías
+                        st.subheader("📈 Visualización de Anomalías")
                         
-                        fig_dist, ax_dist = plt.subplots(figsize=(8, 6))
-                        colors = ['#2ecc71', '#e74c3c']  # Verde para normal, rojo para anomalías
-                        bars = ax_dist.bar(anomaly_dist.index, anomaly_dist.values, color=colors, alpha=0.8)
-                        
-                        # Añadir etiquetas en las barras
-                        for bar, value in zip(bars, anomaly_dist.values):
-                            height = bar.get_height()
-                            ax_dist.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
-                                       f'{value}\n({value/len(df_anom)*100:.1f}%)', 
-                                       ha='center', va='bottom', fontweight='bold')
-                        
-                        ax_dist.set_title('Distribución de Anomalías vs Datos Normales', fontsize=14, fontweight='bold')
-                        ax_dist.set_xlabel('Tipo de Dato', fontsize=12)
-                        ax_dist.set_ylabel('Cantidad', fontsize=12)
-                        plt.style.use('seaborn-v0_8-whitegrid')
-                        plt.tight_layout()
-                        st.pyplot(fig_dist)
-
-                        # Visualización detallada de anomalías
-                        st.subheader("🎯 Visualización Detallada de Anomalías")
-                        
-                        numeric_cols_for_viz = [col for col in df_anom.columns if col != 'Anomalía' and pd.api.types.is_numeric_dtype(df_anom[col])]
-                        
-                        if numeric_cols_for_viz:
+                        if numeric_vars:
                             selected_viz_vars = st.multiselect(
-                                "Selecciona hasta 2 variables numéricas para análisis visual:",
-                                options=numeric_cols_for_viz,
-                                default=numeric_cols_for_viz[:min(len(numeric_cols_for_viz), 2)],
-                                max_selections=2,
-                                key="viz_anom_vars_modern"
+                                "Selecciona variables para visualizar anomalías:",
+                                options=numeric_vars,
+                                default=numeric_vars[:min(len(numeric_vars), 2)],
+                                key="anomaly_viz_vars"
                             )
-
+                            
                             if selected_viz_vars:
-                                plt.style.use('seaborn-v0_8-whitegrid')
-
                                 if len(selected_viz_vars) == 1:
                                     var_to_plot = selected_viz_vars[0]
                                     st.write(f"Distribución de '{var_to_plot}' para datos normales vs. anomalías:")
@@ -771,8 +849,7 @@ if df is not None:
                             else:
                                 st.info("Selecciona al menos una variable para visualizar anomalías.")
                         else:
-                            st.info("No hay variables numéricas disponibles para visualización detallada de anomalías.")
-                            
+                            st.info("No hay variables numéricas disponibles para visualización detallada de anomalías.")                            
                     except Exception as e:
                         st.error(f"❌ Error durante la detección de anomalías: {e}")
         else:

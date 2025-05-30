@@ -37,13 +37,13 @@ def analisis_descriptivo(df: pd.DataFrame):
     st.markdown("### 👀 Vista Previa de los Datos")
     with st.expander("Mostrar datos de muestra", expanded=False):
         st.dataframe(df.head(10), use_container_width=True)
-    
-    # Análisis de calidad de datos
+      # Análisis de calidad de datos
     st.markdown("### 🔍 Calidad de los Datos")
     calidad_datos(df)
     
     # Análisis de variables numéricas mejorado
     st.markdown("### 📈 Análisis de Variables Numéricas")
+    st.markdown("**🎯 Esta sección incluye Unit price, Quantity, Tax 5%, Total y más variables numéricas**")
     analisis_variables_numericas(df)
     
     # Análisis de variables categóricas mejorado
@@ -95,15 +95,31 @@ def analisis_variables_numericas(df):
     
     num_cols = df.select_dtypes(include=['number']).columns.tolist()
     
+    # Mensaje destacado
+    st.markdown("---")
+    st.markdown("### 🔢 **SECCIÓN DE VARIABLES NUMÉRICAS**")
+    st.markdown("**✨ Aquí puedes analizar Unit price, Quantity, Tax 5%, Total, etc.**")
+      # Agregar información de depuración
+    st.write(f"🔍 **Debug:** Detectadas {len(num_cols)} variables numéricas")
+    if len(num_cols) > 0:
+        st.write(f"📊 **Variables numéricas:** {', '.join(num_cols)}")
+    
     if len(num_cols) == 0:
         st.info("No se encontraron variables numéricas en el dataset")
         return
     
     # Selector de variables para análisis detallado
+    st.markdown("#### 🔢 Selección de Variables para Análisis Detallado")
+    
+    # Mensaje informativo para evitar confusión
+    st.info("💡 **Instrucciones:** Selecciona las variables que deseas analizar. Los cambios se aplicarán automáticamente sin reiniciar la página.")
+    
     selected_vars = st.multiselect(
         "Selecciona variables numéricas para análisis detallado:",
         num_cols,
-        default=num_cols[:min(4, len(num_cols))]
+        default=num_cols[:min(4, len(num_cols))],
+        help="Estas son las variables que incluyen Unit price, Quantity, Tax 5%, Total, etc.",
+        key="eda_numeric_vars_selector"
     )
     
     if selected_vars:
@@ -164,7 +180,8 @@ def analisis_variables_categoricas(df):
     selected_cats = st.multiselect(
         "Selecciona variables categóricas para análisis:",
         cat_cols,
-        default=cat_cols[:min(3, len(cat_cols))]
+        default=cat_cols[:min(3, len(cat_cols))],
+        key="eda_categorical_vars_selector"
     )
     
     if selected_cats:
@@ -258,8 +275,7 @@ def analisis_supermercado(df):
     ventas_cols = [col for col in supermarket_cols['ventas'] if col in df.columns]
     if ventas_cols:
         available_analyses.append('Análisis de Ventas')
-    
-    # Análisis de productos
+      # Análisis de productos
     if 'Product line' in df.columns:
         available_analyses.append('Análisis de Productos')
     
@@ -274,7 +290,8 @@ def analisis_supermercado(df):
     
     selected_analysis = st.selectbox(
         "Selecciona un análisis específico:",
-        available_analyses
+        available_analyses,
+        key="eda_supermercado_analysis_selector"
     )
     
     if selected_analysis == 'Análisis de Ventas' and ventas_cols:
